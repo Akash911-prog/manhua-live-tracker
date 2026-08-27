@@ -1,0 +1,11 @@
+{
+    "name": "java",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "dev": "cd ./android-client/src; javac Main.java; java Main"
+    },
+    "dependencies": {},
+    "devDependencies": {}
+}
