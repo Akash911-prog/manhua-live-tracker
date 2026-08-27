@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS reading_events (
     id INTEGER PRIMARY KEY,
     source TEXT NOT NULL,
     domain TEXT NOT NULL,
-    raw_title TEXT,
+    raw_url TEXT NOT NULL,
     chapter REAL,
     detected_at INTEGER,
     synced INTEGER DEFAULT 0

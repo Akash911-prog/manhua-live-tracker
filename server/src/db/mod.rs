@@ -67,10 +67,33 @@ impl DB {
         )
     }
 
+    pub fn get_reading_event(&self, id: i64) -> Result<types::ReadingEvent, rusqlite::Error> {
+        self.query_one(
+            "SELECT * FROM reading_events WHERE id = ?",
+            [id],
+            types::ReadingEvent::from_row,
+        )
+    }
+
+    pub fn get_series_sources_by_domain(
+        &self,
+        domain: &str,
+    ) -> Result<Vec<types::SeriesSource>, rusqlite::Error> {
+        self.query_many(
+            "SELECT * FROM series_sources WHERE domain = ?",
+            [domain],
+            types::SeriesSource::from_row,
+        )
+    }
+
+    pub fn list_all_series(&self) -> Result<Vec<types::Series>, rusqlite::Error> {
+        self.query_many("SELECT * FROM series", [], types::Series::from_row)
+    }
+
     pub fn insert_event(&self, e: &types::NewEvent) -> Result<i64, rusqlite::Error> {
         self.exec(
-            "INSERT INTO reading_events (source, domain, raw_title, chapter, detected_at, synced) VALUES (?1, ?2, ?3, ?4, ?5, 0)",
-            rusqlite::params![e.source, e.domain, e.raw_title, e.chapter, e.detected_at],
+            "INSERT INTO reading_events (source, domain, raw_url, chapter, detected_at, synced) VALUES (?1, ?2, ?3, ?4, ?5, 0)",
+            rusqlite::params![e.source, e.domain, e.raw_url, e.chapter, e.detected_at],
         )?;
         Ok(self.last_insert_id())
     }

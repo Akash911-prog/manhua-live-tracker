@@ -5,8 +5,10 @@ use axum::{
 };
 use axum_server::tls_rustls::RustlsConfig;
 use manhua_live_tracker::{
+    AppState,
     db::DB,
     middleware::require_auth,
+    process::resolve_event,
     routes::series::{get_series, post_event},
 };
 use std::{net::SocketAddr, sync::Arc};
@@ -27,6 +29,17 @@ async fn main() {
     let db = Arc::new(DB::init(db_path).expect("failed to init db"));
     let token = Arc::new(std::env::var("MT_TOKEN").expect("MANHUA_AUTH_TOKEN not set"));
 
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<i64>();
+
+    let worker_db = db.clone();
+    tokio::spawn(async move {
+        while let Some(event_id) = rx.recv().await {
+            if let Err(e) = resolve_event(&worker_db, event_id) {
+                tracing::error!("resolver failed for event {event_id}: {e}");
+            }
+        }
+    });
+
     // creates the App
     let protected = Router::new()
         .route("/series/{id}", get(get_series))
@@ -38,13 +51,15 @@ async fn main() {
 
     let public = Router::new().route("/health", get(|| async { StatusCode::OK }));
 
-    let app = protected.merge(public).with_state(db);
+    let state = AppState { db, tx };
+
+    let app = protected.merge(public).with_state(state);
 
     let tls_config = RustlsConfig::from_pem_file("cert.pem", "key.pem")
         .await
         .expect("failed to load TLS cert/key");
 
-    let addr: SocketAddr = "0.0.0.0:4177".parse().unwrap();
+    let addr: SocketAddr = "0.0.0.0:1409".parse().unwrap();
     axum_server::bind_rustls(addr, tls_config)
         .serve(app.into_make_service())
         .await

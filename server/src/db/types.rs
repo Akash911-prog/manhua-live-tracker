@@ -44,7 +44,7 @@ pub struct ReadingEvent {
     pub id: i64,
     pub source: String,
     pub domain: String,
-    pub raw_title: Option<String>,
+    pub raw_url: String,
     pub chapter: Option<f64>,
     pub detected_at: Option<i64>,
     pub synced: Option<i64>,
@@ -56,7 +56,7 @@ impl ReadingEvent {
             id: row.get(0)?,
             source: row.get(1)?,
             domain: row.get(2)?,
-            raw_title: row.get(3)?,
+            raw_url: row.get(3)?,
             chapter: row.get(4)?,
             detected_at: row.get(5)?,
             synced: row.get(6)?,
@@ -68,7 +68,7 @@ impl ReadingEvent {
 pub struct NewEvent {
     pub source: String, // "phone-1", "phone-2", "pc-extension"
     pub domain: String,
-    pub raw_title: Option<String>,
+    pub raw_url: String,
     pub chapter: Option<f64>,
     pub detected_at: i64,
 }

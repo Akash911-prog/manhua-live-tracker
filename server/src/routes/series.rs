@@ -10,10 +10,14 @@ use crate::db::{DB, types};
 
 pub async fn post_event(
     State(db): State<Arc<DB>>,
+    State(tx): State<tokio::sync::mpsc::UnboundedSender<i64>>,
     Json(payload): Json<types::NewEvent>,
 ) -> StatusCode {
     match db.insert_event(&payload) {
-        Ok(_) => StatusCode::OK,
+        Ok(event_id) => {
+            let _ = tx.send(event_id);
+            StatusCode::OK
+        }
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
