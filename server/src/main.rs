@@ -25,6 +25,8 @@ async fn main() {
         .to_str()
         .expect("failed to convert path to str");
 
+    println!("db path: {db_path}");
+
     // initializes the database
     let db = Arc::new(DB::init(db_path).expect("failed to init db"));
     let token = Arc::new(std::env::var("MT_TOKEN").expect("MANHUA_AUTH_TOKEN not set"));
