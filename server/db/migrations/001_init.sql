@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS reading_events (
     source TEXT NOT NULL,
     domain TEXT NOT NULL,
     raw_url TEXT NOT NULL,
-    chapter REAL,
     detected_at INTEGER,
-    synced INTEGER DEFAULT 0
+    synced INTEGER DEFAULT 0,
+    series_id INTEGER REFERENCES series(id)
 );

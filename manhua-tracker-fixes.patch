@@ -1,0 +1,145 @@
+diff --git a/scripts/reset-db.sql b/scripts/reset-db.sql
+new file mode 100644
+index 0000000..62b4d6b
+--- /dev/null
++++ b/scripts/reset-db.sql
+@@ -0,0 +1,5 @@
++-- Manual dev-only reset. NOT a migration — do not include this via include_str!
++-- or run it against a db you care about. Run by hand: sqlite3 manhua.db < reset-db.sql
++DROP TABLE reading_events;
++DROP TABLE series_sources;
++DROP TABLE series;
+\ No newline at end of file
+diff --git a/server/db/migrations/001_init.sql b/server/db/migrations/001_init.sql
+index 6b2b0ff..3e49d42 100644
+--- a/server/db/migrations/001_init.sql
++++ b/server/db/migrations/001_init.sql
+@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS reading_events (
+     source TEXT NOT NULL,
+     domain TEXT NOT NULL,
+     raw_url TEXT NOT NULL,
+-    chapter REAL,
+     detected_at INTEGER,
+-    synced INTEGER DEFAULT 0
++    synced INTEGER DEFAULT 0,
++    series_id INTEGER REFERENCES series(id)
+ );
+\ No newline at end of file
+diff --git a/server/db/migrations/002_del.sql b/server/db/migrations/002_del.sql
+deleted file mode 100644
+index 4cd5cf3..0000000
+--- a/server/db/migrations/002_del.sql
++++ /dev/null
+@@ -1,3 +0,0 @@
+-DROP TABLE reading_events;
+-DROP TABLE series_sources;
+-DROP TABLE series;
+\ No newline at end of file
+diff --git a/server/src/db/mod.rs b/server/src/db/mod.rs
+index cf11fc5..a99e63a 100644
+--- a/server/src/db/mod.rs
++++ b/server/src/db/mod.rs
+@@ -92,8 +92,8 @@ impl DB {
+ 
+     pub fn insert_event(&self, e: &types::NewEvent) -> Result<i64, rusqlite::Error> {
+         self.exec(
+-            "INSERT INTO reading_events (source, domain, raw_url, chapter, detected_at, synced) VALUES (?1, ?2, ?3, ?4, ?5, 0)",
+-            rusqlite::params![e.source, e.domain, e.raw_url, e.chapter, e.detected_at],
++            "INSERT INTO reading_events (source, domain, raw_url, detected_at, synced) VALUES (?1, ?2, ?3, ?4, 0)",
++            rusqlite::params![e.source, e.domain, e.raw_url, e.detected_at],
+         )?;
+         Ok(self.last_insert_id())
+     }
+diff --git a/server/src/db/types.rs b/server/src/db/types.rs
+index 4452113..a908c56 100644
+--- a/server/src/db/types.rs
++++ b/server/src/db/types.rs
+@@ -45,9 +45,9 @@ pub struct ReadingEvent {
+     pub source: String,
+     pub domain: String,
+     pub raw_url: String,
+-    pub chapter: Option<f64>,
+     pub detected_at: Option<i64>,
+     pub synced: Option<i64>,
++    pub series_id: Option<i64>,
+ }
+ 
+ impl ReadingEvent {
+@@ -57,9 +57,9 @@ impl ReadingEvent {
+             source: row.get(1)?,
+             domain: row.get(2)?,
+             raw_url: row.get(3)?,
+-            chapter: row.get(4)?,
+-            detected_at: row.get(5)?,
+-            synced: row.get(6)?,
++            detected_at: row.get(4)?,
++            synced: row.get(5)?,
++            series_id: row.get(6)?,
+         })
+     }
+ }
+@@ -69,7 +69,6 @@ pub struct NewEvent {
+     pub source: String, // "phone-1", "phone-2", "pc-extension"
+     pub domain: String,
+     pub raw_url: String,
+-    pub chapter: Option<f64>,
+     pub detected_at: i64,
+ }
+ 
+diff --git a/server/src/lib.rs b/server/src/lib.rs
+index 76824aa..dd7aa33 100644
+--- a/server/src/lib.rs
++++ b/server/src/lib.rs
+@@ -5,8 +5,8 @@ use crate::db::DB;
+ pub mod db;
+ pub mod middleware;
+ pub mod process;
++pub mod parsing;
+ pub mod routes;
+-pub mod static_files;
+ 
+ #[derive(Clone)]
+ pub struct AppState {
+diff --git a/server/src/static_files.rs b/server/src/parsing.rs
+similarity index 100%
+rename from server/src/static_files.rs
+rename to server/src/parsing.rs
+diff --git a/server/src/process/mod.rs b/server/src/process/mod.rs
+index 91c9a65..6517c66 100644
+--- a/server/src/process/mod.rs
++++ b/server/src/process/mod.rs
+@@ -2,7 +2,7 @@ use strsim::jaro_winkler;
+ 
+ use crate::{
+     db::{DB, types},
+-    static_files::{CHAPTER_URL_RE, slug_to_title},
++    parsing::{CHAPTER_URL_RE, slug_to_title},
+ };
+ 
+ const MATCH_THRESHOLD: f64 = 0.85;
+@@ -24,14 +24,18 @@ pub fn resolve_event(db: &DB, event_id: i64) -> Result<(), rusqlite::Error> {
+ 
+     // 1. seen this exact domain+title combo before?
+     let known_sources = db.get_series_sources_by_domain(&event.domain)?;
+-    let existing_match = known_sources.iter().find(|s| {
+-        s.site_title
+-            .as_deref()
+-            .map(|t| jaro_winkler(&t.to_lowercase(), &title.to_lowercase()) >= MATCH_THRESHOLD)
+-            .unwrap_or(false)
+-    });
++    let existing_match = known_sources
++        .iter()
++        .filter_map(|s| {
++            let score = jaro_winkler(
++                &s.site_title.as_deref().unwrap_or_default().to_lowercase(),
++                &title.to_lowercase(),
++            );
++            (score >= MATCH_THRESHOLD).then_some((s, score))
++        })
++        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+ 
+-    let series_id = if let Some(source) = existing_match {
++    let series_id = if let Some((source, _)) = existing_match {
+         source.series_id
+     } else {
+         // 2. known series, just new on this domain?

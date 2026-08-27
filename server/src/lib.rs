@@ -5,8 +5,8 @@ use crate::db::DB;
 pub mod db;
 pub mod middleware;
 pub mod process;
+pub mod parsing;
 pub mod routes;
-pub mod static_files;
 
 #[derive(Clone)]
 pub struct AppState {

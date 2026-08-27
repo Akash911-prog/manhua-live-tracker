@@ -92,8 +92,8 @@ impl DB {
 
     pub fn insert_event(&self, e: &types::NewEvent) -> Result<i64, rusqlite::Error> {
         self.exec(
-            "INSERT INTO reading_events (source, domain, raw_url, chapter, detected_at, synced) VALUES (?1, ?2, ?3, ?4, ?5, 0)",
-            rusqlite::params![e.source, e.domain, e.raw_url, e.chapter, e.detected_at],
+            "INSERT INTO reading_events (source, domain, raw_url, detected_at, synced) VALUES (?1, ?2, ?3, ?4, 0)",
+            rusqlite::params![e.source, e.domain, e.raw_url, e.detected_at],
         )?;
         Ok(self.last_insert_id())
     }
