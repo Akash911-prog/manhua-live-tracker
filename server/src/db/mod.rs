@@ -90,6 +90,14 @@ impl DB {
         self.query_many("SELECT * FROM series", [], types::Series::from_row)
     }
 
+    pub fn list_series(&self) -> Result<Vec<types::Series>, rusqlite::Error> {
+        self.query_many(
+            "SELECT * FROM series ORDER BY last_updated_at DESC",
+            [],
+            types::Series::from_row,
+        )
+    }
+
     pub fn insert_event(&self, e: &types::NewEvent) -> Result<i64, rusqlite::Error> {
         self.exec(
             "INSERT INTO reading_events (source, domain, raw_url, detected_at, synced) VALUES (?1, ?2, ?3, ?4, 0)",

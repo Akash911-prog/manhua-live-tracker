@@ -23,6 +23,14 @@ pub async fn post_event(
     }
 }
 
+pub async fn list_series(
+    State(db): State<Arc<DB>>,
+) -> Result<Json<Vec<types::Series>>, StatusCode> {
+    db.list_series()
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 pub async fn get_series(
     State(db): State<Arc<DB>>,
     Path(id): Path<i64>,

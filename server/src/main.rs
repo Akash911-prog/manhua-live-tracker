@@ -9,7 +9,7 @@ use manhua_live_tracker::{
     db::DB,
     middleware::require_auth,
     process::resolve_event,
-    routes::series::{get_series, post_event},
+    routes::series::{get_series, list_series, post_event},
 };
 use std::{net::SocketAddr, sync::Arc};
 
@@ -44,6 +44,7 @@ async fn main() {
 
     // creates the App
     let protected = Router::new()
+        .route("/series", get(list_series))
         .route("/series/{id}", get(get_series))
         .route("/events", post(post_event))
         .layer(axum::middleware::from_fn_with_state(
