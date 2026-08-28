@@ -187,4 +187,38 @@ impl DB {
         self.exec(&sql, rusqlite::params_from_iter(event_ids.iter()))?;
         Ok(())
     }
+
+    // called by the TUI to queue a URL for a specific phone
+    pub fn create_pending_open(
+        &self,
+        p: &types::NewPendingOpen,
+        now: i64,
+    ) -> Result<i64, rusqlite::Error> {
+        self.exec(
+            "INSERT INTO pending_opens (target_device, url, created_at, delivered) VALUES (?1, ?2, ?3, 0)",
+            rusqlite::params![p.target_device, p.url, now],
+        )?;
+        Ok(self.last_insert_id())
+    }
+
+    // called by a phone's sync job, filtered to just its own device id
+    pub fn get_pending_opens(
+        &self,
+        target_device: &str,
+    ) -> Result<Vec<types::PendingOpen>, rusqlite::Error> {
+        self.query_many(
+            "SELECT * FROM pending_opens WHERE target_device = ?1 AND delivered = 0 ORDER BY created_at ASC",
+            [target_device],
+            types::PendingOpen::from_row,
+        )
+    }
+
+    // called by the phone once it's actually opened the URL
+    pub fn mark_pending_open_delivered(&self, id: i64) -> Result<(), rusqlite::Error> {
+        self.exec(
+            "UPDATE pending_opens SET delivered = 1 WHERE id = ?1",
+            [id],
+        )?;
+        Ok(())
+    }
 }

@@ -9,7 +9,10 @@ use manhua_live_tracker::{
     db::DB,
     middleware::require_auth,
     process::resolve_event,
-    routes::series::{get_series, list_series, post_event},
+    routes::{
+        pending_opens::{ack_pending_open, create_pending_open, get_pending_opens},
+        series::{get_series, list_series, post_event},
+    },
 };
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::trace::TraceLayer;
@@ -65,11 +68,16 @@ async fn main() {
         }
     });
 
+    println!("{token}");
+
     // creates the App
     let protected = Router::new()
         .route("/series", get(list_series))
         .route("/series/{id}", get(get_series))
         .route("/events", post(post_event))
+        .route("/pending-opens", post(create_pending_open))
+        .route("/pending-opens/{target_device}", get(get_pending_opens))
+        .route("/pending-opens/{id}/ack", post(ack_pending_open))
         .layer(axum::middleware::from_fn_with_state(
             token.clone(),
             require_auth,

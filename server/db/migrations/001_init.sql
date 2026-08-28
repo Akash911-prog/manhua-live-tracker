@@ -23,3 +23,13 @@ CREATE TABLE IF NOT EXISTS reading_events (
     synced INTEGER DEFAULT 0,
     series_id INTEGER REFERENCES series(id)
 );
+
+-- URLs queued by the TUI to be opened on a specific phone (send-to-phone feature).
+-- target_device matches the same identifier reading_events.source uses ("phone-1", "phone-2").
+CREATE TABLE IF NOT EXISTS pending_opens (
+    id INTEGER PRIMARY KEY,
+    target_device TEXT NOT NULL,
+    url TEXT NOT NULL,
+    created_at INTEGER,
+    delivered INTEGER DEFAULT 0
+);

@@ -13,7 +13,7 @@ pub async fn post_event(
     State(tx): State<tokio::sync::mpsc::UnboundedSender<i64>>,
     Json(payload): Json<types::NewEvent>,
 ) -> StatusCode {
-    println!("got event: {payload:?}");
+    tracing::info!("got event: {payload:?}");
     match db.insert_event(&payload) {
         Ok(event_id) => {
             let _ = tx.send(event_id);

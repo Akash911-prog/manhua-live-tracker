@@ -79,3 +79,30 @@ pub struct NewSeriesSource {
     pub site_title: Option<String>,
     pub url_pattern: Option<String>,
 }
+
+#[derive(Debug, serde::Serialize)]
+pub struct PendingOpen {
+    pub id: i64,
+    pub target_device: String,
+    pub url: String,
+    pub created_at: Option<i64>,
+    pub delivered: Option<i64>,
+}
+
+impl PendingOpen {
+    pub fn from_row(row: &rusqlite::Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get(0)?,
+            target_device: row.get(1)?,
+            url: row.get(2)?,
+            created_at: row.get(3)?,
+            delivered: row.get(4)?,
+        })
+    }
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct NewPendingOpen {
+    pub target_device: String, // "phone-1" or "phone-2" — TUI picks which
+    pub url: String,
+}
